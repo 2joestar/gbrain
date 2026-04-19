@@ -1,0 +1,21 @@
+# Gotchas — apple-mamasethu
+
+## [2026-04-19] PGLite parallel import crash
+**What:** Running two `gbrain import` in parallel causes WASM abort
+**Why:** PGLite only allows one writer; second process times out, corrupts lock
+**Fix:** Always run gbrain imports sequentially; check postmaster.pid for stale locks
+
+## [2026-04-19] bun not on PATH for gbrain shebang
+**What:** `gbrain --version` returns `/usr/bin/env: 'bun': No such file or directory`
+**Why:** System PATH lacks ~/.bun/bin; shebang can't find bun
+**Fix:** Use wrapper script at bin/gbrain that hardcodes ~/.bun/bin/bun path
+
+## [2026-04-19] git restore --staged fails on new repo
+**What:** `git restore --staged <file>` fails with "pathspec did not match any file(s)"
+**Why:** No HEAD yet in new repo — standard unstaging commands require at least one commit
+**Fix:** Use `git update-index --force-remove <file>` for each path
+
+## [2026-04-19] Apple pytest baseline = 144
+**What:** Any extraction step that drops below 144 must be rolled back
+**Why:** Hard gate from Run 2 spec — never regress
+**Fix:** Run `pytest -q` after every change; rollback shim if count < 144

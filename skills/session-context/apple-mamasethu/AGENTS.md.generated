@@ -1,0 +1,15 @@
+# apple-mamasethu — Agents Context (auto-generated)
+
+## Available agents (resolve from PhoenixGlobal)
+- `coder` — implementation, debug, refactor
+- `researcher` — research, investigate, explore
+- `reviewer` — review, audit, qa
+- `hermes-supervisor` — validate, govern, approve (high-risk)
+
+## Context pre-load
+Every agent receives `gotchas.md` before starting (XHawk pattern).
+
+## Session search
+`/session-context search "<keyword>"` before any task.
+
+_Regenerate: `/session-context gen-agents-md /mnt/c/Projects/apple-mamasethu`_
