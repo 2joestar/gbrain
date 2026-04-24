@@ -2,12 +2,28 @@
  * Embedding Service
  * Ported from production Ruby implementation (embedding_service.rb, 190 LOC)
  *
- * OpenAI text-embedding-3-large at 1536 dimensions.
+ * Default: OpenAI text-embedding-3-large at 1536 dimensions.
+ * Override: set APPLE_EMBED_URL=http://127.0.0.1:5002/internal/embed to use
+ * Apple's embedder (sentence-transformers, 384-dim). Requires a full DB
+ * re-embed when switching dimensions (gbrain embed --all).
  * Retry with exponential backoff (4s base, 120s cap, 5 retries).
  * 8000 character input truncation.
  */
 
 import OpenAI from 'openai';
+
+const APPLE_EMBED_URL = process.env['APPLE_EMBED_URL'] ?? '';
+
+async function embedViaApple(texts: string[]): Promise<Float32Array[]> {
+  const resp = await fetch(APPLE_EMBED_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ texts }),
+  });
+  if (!resp.ok) throw new Error(`Apple embed error: ${resp.status}`);
+  const data = await resp.json() as { vectors: number[][] };
+  return data.vectors.map(v => new Float32Array(v));
+}
 
 const MODEL = 'text-embedding-3-large';
 const DIMENSIONS = 1536;
@@ -34,6 +50,16 @@ export async function embed(text: string): Promise<Float32Array> {
 
 export async function embedBatch(texts: string[]): Promise<Float32Array[]> {
   const truncated = texts.map(t => t.slice(0, MAX_CHARS));
+
+  // Use Apple embedder if APPLE_EMBED_URL is set (requires DB re-embed when switching)
+  if (APPLE_EMBED_URL) {
+    try {
+      return await embedViaApple(truncated);
+    } catch (e) {
+      console.error('[embedding] Apple embed failed, falling back to OpenAI:', e instanceof Error ? e.message : e);
+    }
+  }
+
   const results: Float32Array[] = [];
 
   // Process in batches of BATCH_SIZE
