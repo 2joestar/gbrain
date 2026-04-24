@@ -144,7 +144,35 @@ class ModelRouter:
                     log("model_failed", {"model": model, "error": str(e)[:120]})
                     break  # non-timeout → move to next model immediately
 
-        raise RuntimeError(f"All models in chain '{chain}' failed. Last: {last_error}")
+        # Chain exhausted — try global fallback_model from model-intent.yml
+        fallback = self._load_fallback_model()
+        if fallback:
+            try:
+                log("model_fallback_attempt", {"fallback": fallback, "chain": chain})
+                provider_obj, model_id = self._provider_for_model(fallback)
+                if provider_obj is not None:
+                    t0 = time.time()
+                    result = await provider_obj.complete(
+                        messages, model_id, max_tokens=max_tokens, **kwargs
+                    )
+                    elapsed = time.time() - t0
+                    if result:
+                        self._record_success(fallback, latency=elapsed)
+                        log(
+                            "model_fallback_success",
+                            {"fallback": fallback, "latency_s": round(elapsed, 2)},
+                        )
+                        return result
+            except Exception as e:
+                log(
+                    "model_fallback_failed",
+                    {"fallback": fallback, "error": str(e)[:120]},
+                )
+                last_error = e
+
+        raise RuntimeError(
+            f"All models in chain '{chain}' and fallback failed. Last: {last_error}"
+        )
 
     async def complete_model(
         self, messages: list, model: str, max_tokens: int = 2048, **kwargs
@@ -175,6 +203,20 @@ class ModelRouter:
             except Exception as e:
                 self._record_failure(model)
                 log("stream_model_failed", {"model": model, "error": str(e)[:80]})
+
+    def _load_fallback_model(self) -> str:
+        """Read fallback_model from protocols/model-intent.yml. Returns '' on any error."""
+        try:
+            import pathlib
+            import yaml  # type: ignore[import]
+
+            intent_path = (
+                pathlib.Path(__file__).parents[4] / "protocols" / "model-intent.yml"
+            )
+            data = yaml.safe_load(intent_path.read_text())
+            return data.get("fallback_model", "")
+        except Exception:
+            return ""
 
     def health_report(self) -> dict:
         report = {
