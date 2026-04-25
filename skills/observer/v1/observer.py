@@ -30,12 +30,15 @@ VAULT_PATH = os.getenv("VAULT_PATH", os.path.expanduser("~/.apple_memory"))
 
 
 class Observer:
-    """Passive system monitor. Detects issues, queues tasks for Hermes.
-    Does NOT fix anything directly. All actions go through Hermes.
+    """Passive system monitor. Detects issues, queues tasks for Gatekeeper.
+    Does NOT fix anything directly. All actions go through Gatekeeper.
     """
 
-    def __init__(self, hermes, orchestrator=None):
-        self.hermes = hermes
+    def __init__(self, gatekeeper=None, orchestrator=None, **_deprecated):
+        # Back-compat: hermes= alias for gatekeeper= (removed in Run 5)
+        if gatekeeper is None and "hermes" in _deprecated:
+            gatekeeper = _deprecated["hermes"]
+        self.gatekeeper = gatekeeper
         self.orchestrator = orchestrator
         self._queue: asyncio.Queue = None
         self._running = False
@@ -63,7 +66,7 @@ class Observer:
         while self._running:
             await asyncio.sleep(interval)
             try:
-                await self._check_hermes_health()
+                await self._check_gatekeeper_health()
                 await self._check_disk()
                 await self._check_provider_health()
                 # Periodic snapshot
@@ -73,10 +76,10 @@ class Observer:
             except Exception as e:
                 log("observer_check_error", {"error": str(e)})
 
-    async def _check_hermes_health(self):
-        stats = self.hermes.stats()
+    async def _check_gatekeeper_health(self):
+        stats = self.gatekeeper.stats()
         if stats.get("blocked", 0) > 50:
-            await self._queue_issue("hermes_high_block_rate", stats)
+            await self._queue_issue("gatekeeper_high_block_rate", stats)
 
     async def _check_disk(self):
         try:
@@ -95,7 +98,7 @@ class Observer:
 
     async def _queue_issue(self, issue_type: str, details: dict):
         action = {"type": "system", "issue": issue_type, "details": details}
-        if self.hermes.validate(action):
+        if self.gatekeeper.validate(action):
             try:
                 self._queue.put_nowait(action)
                 log("observer_issue_queued", {"type": issue_type})
@@ -117,30 +120,67 @@ class Observer:
                 log("observer_worker_error", {"error": str(e)})
 
     async def _heal(self, task: dict):
-        """Dispatch healing actions. All mutations go through Hermes."""
+        """Dispatch healing actions. All mutations go through Gatekeeper."""
         issue = task.get("issue")
         details = task.get("details", {})
 
         if issue == "vault_disk_high":
             pct = details.get("pct", 0)
-            log("observer_healing", {"action": "disk_alert", "pct": pct})
+            # Healing: prune snapshots older than 3 days to recover space.
+            try:
+                asyncio.create_task(asyncio.to_thread(take_snapshot, VAULT_PATH, 3))
+                log("observer_healing", {"action": "snapshot_prune", "max_age_days": 3})
+            except Exception as e:
+                log(
+                    "observer_heal_failed",
+                    {"action": "snapshot_prune", "error": str(e)},
+                )
             await self._notify(
-                f"[Observer] Vault disk at {pct}% — consider pruning old episodic memory."
+                f"[Observer] Vault disk at {pct}% — pruning snapshots older than 3 days."
             )
 
-        elif issue == "hermes_high_block_rate":
+        elif issue in (
+            "gatekeeper_high_block_rate",
+            "hermes_high_block_rate",
+        ):  # hermes_ alias: Run 4 back-compat
             blocked = details.get("blocked", 0)
-            log("observer_healing", {"action": "hermes_alert", "blocked": blocked})
+            # Healing: clear the loop-detection window so blocked actions can retry.
+            try:
+                self.gatekeeper._recent.clear()
+                log(
+                    "observer_healing",
+                    {"action": "gatekeeper_loop_window_cleared", "blocked": blocked},
+                )
+            except Exception as e:
+                log(
+                    "observer_heal_failed",
+                    {"action": "gatekeeper_clear", "error": str(e)},
+                )
             await self._notify(
-                f"[Observer] Hermes blocked {blocked} actions — possible loop or policy misconfiguration."
+                f"[Observer] Gatekeeper blocked {blocked} actions — loop detection window reset."
             )
 
         elif issue == "provider_chain_degraded":
             chain = details.get("chain", "unknown")
             failures = details.get("failures", {})
+            # Healing: reset cooldown timers so degraded models are retried sooner.
+            router = getattr(getattr(self, "orchestrator", None), "router", None)
+            if router is not None:
+                for model in failures:
+                    try:
+                        router._fail_times.pop(model, None)
+                    except Exception:
+                        pass
+                log(
+                    "observer_healing",
+                    {
+                        "action": "provider_cooldown_reset",
+                        "models": list(failures.keys()),
+                    },
+                )
             log("observer_healing", {"action": "provider_alert", "chain": chain})
             await self._notify(
-                f"[Observer] Chain '{chain}' degraded — providers with failures: {failures}"
+                f"[Observer] Chain '{chain}' degraded — cooldown reset for {list(failures.keys())}; will retry next request."
             )
 
         else:
