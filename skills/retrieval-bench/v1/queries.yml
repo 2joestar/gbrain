@@ -1,0 +1,308 @@
+# Retrieval benchmark queries — Run 5 Phase 1
+# 50 queries: 10 per hop-depth (1 through 5)
+# Corpus: vault/.bench/ synthetic org (people, teams, projects)
+
+# ── 1-hop queries (direct fact lookup) ───────────────────────────────────────
+- id: q001
+  query: "Who does Alice report to?"
+  expected_answer: "Bob Martinez"
+  ground_truth_hops: 1
+  source_files: ["vault/.bench/people/alice.md"]
+
+- id: q002
+  query: "What team does Alice belong to?"
+  expected_answer: "Team-Alpha"
+  ground_truth_hops: 1
+  source_files: ["vault/.bench/people/alice.md"]
+
+- id: q003
+  query: "Who manages Team-Alpha?"
+  expected_answer: "Bob Martinez"
+  ground_truth_hops: 1
+  source_files: ["vault/.bench/teams/team-alpha.md"]
+
+- id: q004
+  query: "What projects does Team-Alpha own?"
+  expected_answer: "Project-Phoenix"
+  ground_truth_hops: 1
+  source_files: ["vault/.bench/teams/team-alpha.md"]
+
+- id: q005
+  query: "Who is the technical lead of Project-Phoenix?"
+  expected_answer: "Alice Chen"
+  ground_truth_hops: 1
+  source_files: ["vault/.bench/projects/project-phoenix.md"]
+
+- id: q006
+  query: "What role does Bob Martinez have?"
+  expected_answer: "Engineering Manager"
+  ground_truth_hops: 1
+  source_files: ["vault/.bench/people/bob.md"]
+
+- id: q007
+  query: "Who is the CEO?"
+  expected_answer: "Eve Williams"
+  ground_truth_hops: 1
+  source_files: ["vault/.bench/people/eve.md"]
+
+- id: q008
+  query: "What team does Grace Kim work on?"
+  expected_answer: "Team-Beta"
+  ground_truth_hops: 1
+  source_files: ["vault/.bench/people/grace.md"]
+
+- id: q009
+  query: "Who leads Project-Ember implementation?"
+  expected_answer: "Dave Park"
+  ground_truth_hops: 1
+  source_files: ["vault/.bench/people/dave.md"]
+
+- id: q010
+  query: "What status is Project-Quartz?"
+  expected_answer: "active"
+  ground_truth_hops: 1
+  source_files: ["vault/.bench/projects/project-quartz.md"]
+
+# ── 2-hop queries (one relationship traversal) ────────────────────────────────
+- id: q011
+  query: "Who does Bob Martinez report to?"
+  expected_answer: "Carol Singh"
+  ground_truth_hops: 2
+  source_files: ["vault/.bench/people/bob.md", "vault/.bench/people/carol.md"]
+
+- id: q012
+  query: "Who manages the team that owns Project-Phoenix?"
+  expected_answer: "Bob Martinez"
+  ground_truth_hops: 2
+  source_files: ["vault/.bench/projects/project-phoenix.md", "vault/.bench/teams/team-alpha.md"]
+
+- id: q013
+  query: "What department does Alice Chen work in?"
+  expected_answer: "Engineering"
+  ground_truth_hops: 2
+  source_files: ["vault/.bench/people/alice.md", "vault/.bench/teams/team-alpha.md"]
+
+- id: q014
+  query: "Who approved Project-Phoenix?"
+  expected_answer: "Eve Williams"
+  ground_truth_hops: 2
+  source_files: ["vault/.bench/projects/project-phoenix.md", "vault/.bench/people/eve.md"]
+
+- id: q015
+  query: "Who leads the team that owns Project-Ember?"
+  expected_answer: "Bob Martinez"
+  ground_truth_hops: 2
+  source_files: ["vault/.bench/projects/project-ember.md", "vault/.bench/teams/team-alpha.md"]
+
+- id: q016
+  query: "What does Dave Park's manager manage?"
+  expected_answer: "Team-Alpha"
+  ground_truth_hops: 2
+  source_files: ["vault/.bench/people/dave.md", "vault/.bench/people/bob.md"]
+
+- id: q017
+  query: "Who built the ML pipeline for Project-Quartz?"
+  expected_answer: "Grace Kim"
+  ground_truth_hops: 2
+  source_files: ["vault/.bench/projects/project-quartz.md", "vault/.bench/people/grace.md"]
+
+- id: q018
+  query: "Which team does the Project-Ember tech lead belong to?"
+  expected_answer: "Team-Alpha"
+  ground_truth_hops: 2
+  source_files: ["vault/.bench/projects/project-ember.md", "vault/.bench/people/dave.md"]
+
+- id: q019
+  query: "Who does Frank Lee report to?"
+  expected_answer: "Eve Williams"
+  ground_truth_hops: 2
+  source_files: ["vault/.bench/people/frank.md", "vault/.bench/people/eve.md"]
+
+- id: q020
+  query: "What projects does Bob Martinez's team own?"
+  expected_answer: "Project-Phoenix"
+  ground_truth_hops: 2
+  source_files: ["vault/.bench/people/bob.md", "vault/.bench/teams/team-alpha.md"]
+
+# ── 3-hop queries (two relationship traversals) ──────────────────────────────
+- id: q021
+  query: "Who does Alice's manager report to?"
+  expected_answer: "Carol Singh"
+  ground_truth_hops: 3
+  source_files: ["vault/.bench/people/alice.md", "vault/.bench/people/bob.md", "vault/.bench/people/carol.md"]
+
+- id: q022
+  query: "Who approves projects for Team-Alpha's team lead?"
+  expected_answer: "Eve Williams"
+  ground_truth_hops: 3
+  source_files: ["vault/.bench/teams/team-alpha.md", "vault/.bench/people/bob.md", "vault/.bench/people/carol.md"]
+
+- id: q023
+  query: "What company role manages the VP who oversees Alice's team?"
+  expected_answer: "CEO"
+  ground_truth_hops: 3
+  source_files: ["vault/.bench/people/alice.md", "vault/.bench/teams/team-alpha.md", "vault/.bench/people/carol.md"]
+
+- id: q024
+  query: "Who defines technical strategy for the project Grace's ML pipeline feeds into?"
+  expected_answer: "Alice Chen"
+  ground_truth_hops: 3
+  source_files: ["vault/.bench/people/grace.md", "vault/.bench/projects/project-quartz.md", "vault/.bench/projects/project-phoenix.md"]
+
+- id: q025
+  query: "What team does Alice's mentor lead?"
+  expected_answer: "Team-Alpha"
+  ground_truth_hops: 3
+  source_files: ["vault/.bench/people/alice.md", "vault/.bench/people/dave.md", "vault/.bench/teams/team-alpha.md"]
+
+- id: q026
+  query: "Who manages the VP that Carol reports to?"
+  expected_answer: "Eve Williams"
+  ground_truth_hops: 3
+  source_files: ["vault/.bench/people/carol.md", "vault/.bench/people/eve.md"]
+
+- id: q027
+  query: "What system depends on Project-Phoenix for authentication?"
+  expected_answer: "Project-Ember"
+  ground_truth_hops: 3
+  source_files: ["vault/.bench/projects/project-ember.md", "vault/.bench/projects/project-phoenix.md"]
+
+- id: q028
+  query: "Who manages the team that feeds data into Project-Phoenix?"
+  expected_answer: "Frank Lee"
+  ground_truth_hops: 3
+  source_files: ["vault/.bench/projects/project-phoenix.md", "vault/.bench/projects/project-quartz.md", "vault/.bench/teams/team-beta.md"]
+
+- id: q029
+  query: "What does Grace Kim's manager define strategy for?"
+  expected_answer: "Project-Quartz"
+  ground_truth_hops: 3
+  source_files: ["vault/.bench/people/grace.md", "vault/.bench/people/frank.md", "vault/.bench/projects/project-quartz.md"]
+
+- id: q030
+  query: "Who is Alice's skip-level manager?"
+  expected_answer: "Carol Singh"
+  ground_truth_hops: 3
+  source_files: ["vault/.bench/people/alice.md", "vault/.bench/people/bob.md", "vault/.bench/people/carol.md"]
+
+# ── 4-hop queries (three relationship traversals) ────────────────────────────
+- id: q031
+  query: "Who does Alice's skip-level manager report to?"
+  expected_answer: "Eve Williams"
+  ground_truth_hops: 4
+  source_files: ["vault/.bench/people/alice.md", "vault/.bench/people/bob.md", "vault/.bench/people/carol.md", "vault/.bench/people/eve.md"]
+
+- id: q032
+  query: "Who approved the project that Grace Kim's ML pipeline feeds into?"
+  expected_answer: "Eve Williams"
+  ground_truth_hops: 4
+  source_files: ["vault/.bench/people/grace.md", "vault/.bench/projects/project-quartz.md", "vault/.bench/projects/project-phoenix.md", "vault/.bench/people/eve.md"]
+
+- id: q033
+  query: "What is the company role of the person who manages Alice's skip-level manager?"
+  expected_answer: "CEO"
+  ground_truth_hops: 4
+  source_files: ["vault/.bench/people/alice.md", "vault/.bench/people/bob.md", "vault/.bench/people/carol.md", "vault/.bench/people/eve.md"]
+
+- id: q034
+  query: "Who is the CEO of the company that Dave Park's manager's manager works at?"
+  expected_answer: "Eve Williams"
+  ground_truth_hops: 4
+  source_files: ["vault/.bench/people/dave.md", "vault/.bench/people/bob.md", "vault/.bench/people/carol.md", "vault/.bench/people/eve.md"]
+
+- id: q035
+  query: "What project depends on data from the project led by Frank's team member?"
+  expected_answer: "Project-Phoenix"
+  ground_truth_hops: 4
+  source_files: ["vault/.bench/people/frank.md", "vault/.bench/teams/team-beta.md", "vault/.bench/people/grace.md", "vault/.bench/projects/project-quartz.md"]
+
+- id: q036
+  query: "Who manages the VP who oversees the team whose member is the Phoenix tech lead?"
+  expected_answer: "Eve Williams"
+  ground_truth_hops: 4
+  source_files: ["vault/.bench/projects/project-phoenix.md", "vault/.bench/teams/team-alpha.md", "vault/.bench/people/carol.md", "vault/.bench/people/eve.md"]
+
+- id: q037
+  query: "What team's manager reports to the person who manages Carol Singh?"
+  expected_answer: "Team-Alpha"
+  ground_truth_hops: 4
+  source_files: ["vault/.bench/people/carol.md", "vault/.bench/people/eve.md", "vault/.bench/people/bob.md", "vault/.bench/teams/team-alpha.md"]
+
+- id: q038
+  query: "What project is led by the senior engineer who mentors the Phoenix tech lead?"
+  expected_answer: "Project-Ember"
+  ground_truth_hops: 4
+  source_files: ["vault/.bench/projects/project-phoenix.md", "vault/.bench/people/alice.md", "vault/.bench/people/dave.md", "vault/.bench/projects/project-ember.md"]
+
+- id: q039
+  query: "Who founded the company that employs the manager of the manager of Alice?"
+  expected_answer: "Eve Williams"
+  ground_truth_hops: 4
+  source_files: ["vault/.bench/people/alice.md", "vault/.bench/people/bob.md", "vault/.bench/people/carol.md", "vault/.bench/people/eve.md"]
+
+- id: q040
+  query: "What does Alice's second-level skip manager oversee besides engineering?"
+  expected_answer: "Carol Singh"
+  ground_truth_hops: 4
+  source_files: ["vault/.bench/people/alice.md", "vault/.bench/people/bob.md", "vault/.bench/people/carol.md", "vault/.bench/people/eve.md"]
+
+# ── 5-hop queries (four relationship traversals) ─────────────────────────────
+- id: q041
+  query: "Who approved the project that depends on the system led by Dave Park's manager's subordinate?"
+  expected_answer: "Eve Williams"
+  ground_truth_hops: 5
+  source_files: ["vault/.bench/people/dave.md", "vault/.bench/people/bob.md", "vault/.bench/people/alice.md", "vault/.bench/projects/project-phoenix.md", "vault/.bench/people/eve.md"]
+
+- id: q042
+  query: "Who does the CTO report to, and what is their role?"
+  expected_answer: "Eve Williams CEO"
+  ground_truth_hops: 5
+  source_files: ["vault/.bench/people/frank.md", "vault/.bench/people/eve.md"]
+
+- id: q043
+  query: "What is the name of the project owned by the team managed by Alice Chen's manager's manager's report?"
+  expected_answer: "Project-Phoenix"
+  ground_truth_hops: 5
+  source_files: ["vault/.bench/people/alice.md", "vault/.bench/people/bob.md", "vault/.bench/people/carol.md", "vault/.bench/teams/team-alpha.md", "vault/.bench/projects/project-phoenix.md"]
+
+- id: q044
+  query: "What technology does the project that feeds data into Project-Phoenix use?"
+  expected_answer: "ML"
+  ground_truth_hops: 5
+  source_files: ["vault/.bench/projects/project-phoenix.md", "vault/.bench/projects/project-quartz.md", "vault/.bench/people/grace.md"]
+
+- id: q045
+  query: "Who leads the team of the person who collaborates with Alice on data processing?"
+  expected_answer: "Frank Lee"
+  ground_truth_hops: 5
+  source_files: ["vault/.bench/people/alice.md", "vault/.bench/people/grace.md", "vault/.bench/teams/team-beta.md", "vault/.bench/people/frank.md"]
+
+- id: q046
+  query: "Who founded the company and what projects have they approved?"
+  expected_answer: "Eve Williams Project-Phoenix"
+  ground_truth_hops: 5
+  source_files: ["vault/.bench/people/eve.md", "vault/.bench/projects/project-phoenix.md"]
+
+- id: q047
+  query: "What system does the project led by Alice's team's manager's other subordinate depend on?"
+  expected_answer: "Project-Phoenix"
+  ground_truth_hops: 5
+  source_files: ["vault/.bench/people/alice.md", "vault/.bench/people/bob.md", "vault/.bench/people/dave.md", "vault/.bench/projects/project-ember.md", "vault/.bench/projects/project-phoenix.md"]
+
+- id: q048
+  query: "Who manages the team of the person who built the pipeline feeding data into Alice's project?"
+  expected_answer: "Frank Lee"
+  ground_truth_hops: 5
+  source_files: ["vault/.bench/projects/project-phoenix.md", "vault/.bench/projects/project-quartz.md", "vault/.bench/people/grace.md", "vault/.bench/teams/team-beta.md", "vault/.bench/people/frank.md"]
+
+- id: q049
+  query: "What year did the CEO found the company that approved Project-Phoenix?"
+  expected_answer: "2020"
+  ground_truth_hops: 5
+  source_files: ["vault/.bench/projects/project-phoenix.md", "vault/.bench/people/eve.md"]
+
+- id: q050
+  query: "Who is the skip-skip-level manager of the Project-Quartz strategy lead's direct report?"
+  expected_answer: "Eve Williams"
+  ground_truth_hops: 5
+  source_files: ["vault/.bench/projects/project-quartz.md", "vault/.bench/people/frank.md", "vault/.bench/people/grace.md", "vault/.bench/teams/team-beta.md", "vault/.bench/people/eve.md"]
