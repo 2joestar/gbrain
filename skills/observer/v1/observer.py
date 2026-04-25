@@ -1,7 +1,10 @@
 import asyncio
+import hashlib
+import json
 import time
 import os
 from collections import deque
+from datetime import datetime, timezone
 import logging as _logging
 
 
@@ -27,6 +30,8 @@ except ImportError:
     load_cfg = _load_cfg_fb
 
 VAULT_PATH = os.getenv("VAULT_PATH", os.path.expanduser("~/.apple_memory"))
+PHOENIX_ROOT = os.getenv("PHOENIX_ROOT", "/mnt/c/Users/PhoenixGlobal")
+STRATEGY_QUEUE = os.path.join(PHOENIX_ROOT, "dream", "strategies", "queue")
 
 
 class Observer:
@@ -185,6 +190,53 @@ class Observer:
 
         else:
             log("observer_unhandled_issue", {"issue": issue})
+
+    def emit_strategy_tuple(
+        self,
+        task_signature: str,
+        skill_path: str,
+        model: str,
+        outcome: str,
+        cost_usd: float = 0.0,
+        latency_ms: int = 0,
+        notes: str = "",
+    ) -> None:
+        """Write a strategy execution record to dream/strategies/queue/.
+
+        Gated by observer.strategy_lane_enabled (default: True).
+        When disabled, this is a silent no-op.
+        """
+        cfg = load_cfg("system").get("observer", {})
+        if not cfg.get("strategy_lane_enabled", True):
+            return
+
+        ts = datetime.now(timezone.utc).isoformat()
+        sig_hash = hashlib.sha1(task_signature.encode()).hexdigest()[:8]
+        ts_slug = ts.replace(":", "").replace(".", "")[:17]
+        filename = f"{ts_slug}-{sig_hash}.json"
+
+        record = {
+            "ts": ts,
+            "task_signature": task_signature,
+            "skill_path": skill_path,
+            "model": model,
+            "outcome": outcome,
+            "cost_usd": cost_usd,
+            "latency_ms": latency_ms,
+            "notes": notes,
+        }
+
+        os.makedirs(STRATEGY_QUEUE, exist_ok=True)
+        path = os.path.join(STRATEGY_QUEUE, filename)
+        try:
+            with open(path, "w") as f:
+                json.dump(record, f)
+            log(
+                "strategy_tuple_emitted",
+                {"signature": task_signature, "outcome": outcome},
+            )
+        except Exception as e:
+            log("strategy_tuple_write_failed", {"error": str(e)})
 
     async def _notify(self, message: str):
         """Push a system notification through the orchestrator if available."""

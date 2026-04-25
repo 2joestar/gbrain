@@ -1,5 +1,7 @@
 import json
+import os
 import re
+from pathlib import Path
 from typing import Optional
 import logging as _logging
 
@@ -18,6 +20,56 @@ try:
 except ImportError:
     log = _log_fb
     load_cfg = _load_cfg_fb
+
+PHOENIX_ROOT = os.getenv("PHOENIX_ROOT", "/mnt/c/Users/PhoenixGlobal")
+LEARNED_STRATEGIES_PATH = Path(PHOENIX_ROOT) / "protocols" / "learned-strategies.yml"
+
+
+def _lookup_learned_strategy(task_signature: str) -> Optional[dict]:
+    """Check learned-strategies.yml for a pinned or learned prior for this task.
+
+    Returns the matching entry dict or None.
+    Priority: pinned > learned (if n_trials >= 5 and success_rate >= 0.8).
+    Logs a [strategy-hit] tag when a match is found.
+    """
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        return None
+
+    if not LEARNED_STRATEGIES_PATH.exists():
+        return None
+
+    try:
+        with open(LEARNED_STRATEGIES_PATH) as f:
+            data = yaml.safe_load(f) or {}
+    except Exception:
+        return None
+
+    # Pinned entries always win (hard override)
+    for entry in data.get("pinned", []) or []:
+        if entry.get("task_signature") == task_signature:
+            log(
+                "[strategy-hit] pinned",
+                {"signature": task_signature, "model": entry.get("model")},
+            )
+            return entry
+
+    # Learned entries: require N>=5 and P>=0.8
+    for entry in data.get("learned", []) or []:
+        if (
+            entry.get("task_signature") == task_signature
+            and entry.get("n_trials", 0) >= 5
+            and entry.get("success_rate", 0.0) >= 0.8
+        ):
+            log(
+                "[strategy-hit] learned",
+                {"signature": task_signature, "model": entry.get("model")},
+            )
+            return entry
+
+    return None
+
 
 PLAN_PROMPT = """You are a task decomposer for an AI assistant.
 Given the user task, return ONLY valid JSON — no explanation, no markdown.
@@ -175,10 +227,30 @@ class Planner:
     def __init__(self, model_router):
         self.router = model_router
 
-    async def plan(self, task: str, context: str = "") -> dict:
+    async def plan(
+        self, task: str, context: str = "", task_signature: str = ""
+    ) -> dict:
         cfg = load_cfg("system").get("planner", {})
         chain = cfg.get("planning_chain", "fast")
         context_summary = context[:300] if context else "none"
+
+        # ── Learned-strategy prior ──────────────────────────────────────────
+        if task_signature:
+            prior = _lookup_learned_strategy(task_signature)
+            if prior:
+                preferred_model = prior.get("model")
+                preferred_skill = prior.get("skill_path")
+                if preferred_model:
+                    chain = preferred_model  # use the learned model as the chain hint
+                log(
+                    "planner_strategy_prior_applied",
+                    {
+                        "signature": task_signature,
+                        "model": preferred_model,
+                        "skill": preferred_skill,
+                    },
+                )
+        # ───────────────────────────────────────────────────────────────────
 
         try:
             prompt = PLAN_PROMPT.format(task=task, context_summary=context_summary)
