@@ -60,11 +60,11 @@ class ExecutionGraph:
     MAX_RETRIES = 2
     RETRY_DELAY = 0.5  # seconds, multiplied by attempt number
 
-    def __init__(self, model_router, tools: dict, memory, hermes):
+    def __init__(self, model_router, tools: dict, memory, gatekeeper):
         self.router = model_router
         self.tools = tools
         self.memory = memory
-        self.hermes = hermes
+        self.gatekeeper = gatekeeper
 
         self._handlers = {
             "search": self._exec_search,

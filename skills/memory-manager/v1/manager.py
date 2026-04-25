@@ -24,12 +24,15 @@ except ImportError:
 
 class MemoryManager:
     """3-tier memory: working (RAM) → episodic/semantic/procedural (disk).
-    All writes are validated by Hermes.
+    All writes are validated by Gatekeeper.
     """
 
-    def __init__(self, vault_path: str, hermes=None):
+    def __init__(self, vault_path: str, gatekeeper=None, **_deprecated):
+        # Back-compat: hermes= alias for gatekeeper= (removed in Run 5)
+        if gatekeeper is None and "hermes" in _deprecated:
+            gatekeeper = _deprecated["hermes"]
         self.vault = Path(vault_path)
-        self.hermes = hermes
+        self.gatekeeper = gatekeeper
         self._cfg = {}
         self._working: dict = {}
         self._seen: set = set()
@@ -92,7 +95,7 @@ class MemoryManager:
             return
 
         action = {"type": "memory_write", "content": content}
-        if self.hermes and not self.hermes.validate(action):
+        if self.gatekeeper and not self.gatekeeper.validate(action):
             return
 
         entry = {

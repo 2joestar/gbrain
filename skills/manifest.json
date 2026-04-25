@@ -143,6 +143,31 @@
       "name": "skillpack-check",
       "path": "skillpack-check/SKILL.md",
       "description": "Agent-readable gbrain health report. Wraps doctor + apply-migrations --list into one JSON blob with exit codes. Cron-friendly for morning-briefing pipelines."
+    },
+    {
+      "name": "karpathy-guidelines",
+      "path": "karpathy-guidelines/v1/SKILL.md",
+      "description": "Guidelines for effective prompting and chain-of-thought reasoning."
+    },
+    {
+      "name": "twitter-reader",
+      "path": "twitter-reader/v1/SKILL.md",
+      "description": "Read and summarize Twitter/X content, extract key insights and threads."
+    },
+    {
+      "name": "using-superpowers",
+      "path": "using-superpowers/v1/SKILL.md",
+      "description": "Guidelines for leveraging superpowers in agent workflows and tool usage."
+    },
+    {
+      "name": "web-reader",
+      "path": "web-reader/v1/SKILL.md",
+      "description": "Read and extract content from web pages, research articles, and documentation."
+    },
+    {
+      "name": "x-bookmarks",
+      "path": "x-bookmarks/v1/SKILL.md",
+      "description": "Import and manage bookmarks, organize resources, and cross-link knowledge."
     }
   ],
   "dependencies": {

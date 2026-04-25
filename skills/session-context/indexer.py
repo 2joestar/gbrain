@@ -137,7 +137,7 @@ def _write_agents_md(path: Path, project: Path) -> None:
         "- `coder` — implementation, debug, refactor\n"
         "- `researcher` — research, investigate, explore\n"
         "- `reviewer` — review, audit, qa\n"
-        "- `hermes-supervisor` — validate, govern, approve (high-risk)\n\n"
+        "- `gatekeeper-supervisor` — validate, govern, approve (high-risk)\n\n"
         "## Context pre-load\n"
         "Every agent receives `gotchas.md` before starting (XHawk pattern).\n\n"
         "## Session search\n"
