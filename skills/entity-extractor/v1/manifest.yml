@@ -1,0 +1,16 @@
+name: entity-extractor
+version: v1
+run: 5
+phase: 3
+feature_flag: entity_extractor.enabled
+model: deepseek-v3.2
+entrypoint: extractor.py
+exports:
+  - Triple
+  - extract
+  - extract_file
+  - upsert_triples
+  - run_dream_extraction
+depends_on:
+  - apple.core.model_router.ModelRouter
+  - graph/graphify/graph.json
