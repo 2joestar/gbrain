@@ -1,0 +1,20 @@
+name: contradiction-detector
+version: v1
+run: 6
+phase: 1
+feature_flag: contradiction_detection.enabled
+model: deepseek-v3.2
+entrypoint: detector.py
+exports:
+  - check
+  - lower_confidence
+  - restore_confidence
+  - archive_entry
+  - write_contradiction_record
+  - list_contradictions
+  - resolve_contradiction
+  - render_search_block
+depends_on:
+  - apple.core.model_router.ModelRouter
+  - brain/skills/entity-extractor/v1/extractor.py
+  - brain/skills/frontmatter-migrate/v1/migrate.py
