@@ -32,6 +32,7 @@ except ImportError:
 VAULT_PATH = os.getenv("VAULT_PATH", os.path.expanduser("~/.apple_memory"))
 PHOENIX_ROOT = os.getenv("PHOENIX_ROOT", "/mnt/c/Users/PhoenixGlobal")
 STRATEGY_QUEUE = os.path.join(PHOENIX_ROOT, "dream", "strategies", "queue")
+MEMORY_TUNE_QUEUE = os.path.join(PHOENIX_ROOT, "dream", "memory-tuning", "queue")
 
 
 class Observer:
@@ -237,6 +238,54 @@ class Observer:
             )
         except Exception as e:
             log("strategy_tuple_write_failed", {"error": str(e)})
+
+    def emit_retrieval(
+        self,
+        query_hash: str,
+        edges_traversed: list,
+        success: bool | None = None,
+    ) -> None:
+        """Write a retrieval observation to dream/memory-tuning/queue/.
+
+        Gated by feature flag memory_tuning.enabled in protocols/feature-flags.yml.
+        When disabled, this is a silent no-op.
+        """
+        try:
+            import yaml
+            from pathlib import Path as _Path
+
+            flags_file = _Path(PHOENIX_ROOT) / "protocols" / "feature-flags.yml"
+            flags = (
+                yaml.safe_load(flags_file.read_text()) if flags_file.exists() else {}
+            )
+            if not flags.get("memory_tuning", {}).get("enabled", False):
+                return
+        except Exception:
+            return
+
+        ts = datetime.now(timezone.utc).isoformat()
+        h = hashlib.sha1(query_hash.encode()).hexdigest()[:8]
+        ts_slug = ts.replace(":", "").replace(".", "")[:17]
+        filename = f"{ts_slug}-{h}.json"
+
+        record = {
+            "ts": ts,
+            "query_hash": query_hash,
+            "edges_traversed": edges_traversed,
+            "success": success,
+        }
+
+        os.makedirs(MEMORY_TUNE_QUEUE, exist_ok=True)
+        path = os.path.join(MEMORY_TUNE_QUEUE, filename)
+        try:
+            with open(path, "w") as f:
+                json.dump(record, f)
+            log(
+                "retrieval_tuple_emitted",
+                {"query_hash": query_hash, "success": success},
+            )
+        except Exception as e:
+            log("retrieval_tuple_write_failed", {"error": str(e)})
 
     async def _notify(self, message: str):
         """Push a system notification through the orchestrator if available."""
