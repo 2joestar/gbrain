@@ -1,0 +1,18 @@
+name: autoresearch
+version: v1
+run: 6
+phase: 2
+feature_flag: autoresearch.enabled
+entrypoint: research.py
+budget_defaults:
+  rounds: 3
+  usd: 0.50
+  tokens: 30000
+exports:
+  - run_research
+  - Budget
+  - BudgetExceeded
+depends_on:
+  - brain/skills/contradiction-detector/v1/detector.py
+  - brain/skills/entity-extractor/v1/extractor.py
+  - bin/phoenix-search.py
