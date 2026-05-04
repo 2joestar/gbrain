@@ -67,7 +67,7 @@ class ModelRouter:
             return self._get_provider_with_credentials("groq"), model[5:]
         if model.startswith("anthropic:"):
             return self._get_provider_with_credentials("anthropic"), model[10:]
-        if "/" in model or model.endswith(":free"):
+        if "/" in model or model.endswith(":free") or model.endswith(":cloud"):
             return self._get_provider_with_credentials("openrouter"), model
         if ":" in model:
             return self._get_provider_with_credentials("ollama"), model

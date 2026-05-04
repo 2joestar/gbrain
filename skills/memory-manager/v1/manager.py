@@ -27,10 +27,7 @@ class MemoryManager:
     All writes are validated by Gatekeeper.
     """
 
-    def __init__(self, vault_path: str, gatekeeper=None, **_deprecated):
-        # Back-compat: hermes= alias for gatekeeper= (removed in Run 5)
-        if gatekeeper is None and "hermes" in _deprecated:
-            gatekeeper = _deprecated["hermes"]
+    def __init__(self, vault_path: str, gatekeeper=None):
         self.vault = Path(vault_path)
         self.gatekeeper = gatekeeper
         self._cfg = {}

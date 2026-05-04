@@ -10,10 +10,25 @@ def _try_load_st():
         return True
     try:
         from sentence_transformers import SentenceTransformer
-        _st_model = SentenceTransformer("all-MiniLM-L6-v2")
+        import signal
+
+        def _raise_timeout(signum, frame):
+            raise TimeoutError("SentenceTransformer init timed out")
+
+        old_handler = signal.signal(signal.SIGALRM, _raise_timeout)
+        signal.alarm(8)  # 8-second timeout for model init
+        try:
+            # Try local files first to avoid network hang
+            try:
+                _st_model = SentenceTransformer("all-MiniLM-L6-v2", local_files_only=True)
+            except Exception:
+                _st_model = SentenceTransformer("all-MiniLM-L6-v2")
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
         _ST_AVAILABLE = True
     except Exception:
-        pass
+        _ST_AVAILABLE = False
     return _ST_AVAILABLE
 
 def embed(text: str) -> List[float]:

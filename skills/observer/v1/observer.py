@@ -40,18 +40,18 @@ class Observer:
     Does NOT fix anything directly. All actions go through Gatekeeper.
     """
 
-    def __init__(self, gatekeeper=None, orchestrator=None, **_deprecated):
-        # Back-compat: hermes= alias for gatekeeper= (removed in Run 5)
-        if gatekeeper is None and "hermes" in _deprecated:
-            gatekeeper = _deprecated["hermes"]
+    def __init__(self, gatekeeper=None, orchestrator=None):
         self.gatekeeper = gatekeeper
         self.orchestrator = orchestrator
-        self._queue: asyncio.Queue = None
+        self._queue: asyncio.Queue = asyncio.Queue(maxsize=100)  # C3 fix: init early
         self._running = False
         self._issue_log: deque = deque(maxlen=200)
 
     async def start(self):
-        self._queue = asyncio.Queue(maxsize=100)
+        # Clear queue on restart (queue already initialized in __init__)
+        while not self._queue.empty():
+            try: self._queue.get_nowait()
+            except: break
         self._running = True
         asyncio.create_task(self._monitor_loop(), name="observer_monitor")
         asyncio.create_task(self._task_worker(), name="observer_worker")
@@ -83,6 +83,8 @@ class Observer:
                 log("observer_check_error", {"error": str(e)})
 
     async def _check_gatekeeper_health(self):
+        if not self.gatekeeper:  # C2 fix: guard against None
+            return
         stats = self.gatekeeper.stats()
         if stats.get("blocked", 0) > 50:
             await self._queue_issue("gatekeeper_high_block_rate", stats)
@@ -134,7 +136,8 @@ class Observer:
             pct = details.get("pct", 0)
             # Healing: prune snapshots older than 3 days to recover space.
             try:
-                asyncio.create_task(asyncio.to_thread(take_snapshot, VAULT_PATH, 3))
+                task = asyncio.create_task(asyncio.to_thread(take_snapshot, VAULT_PATH, 3))
+                task.add_done_callback(lambda t: log("snapshot_prune_failed", {"error": str(t.exception())[:120]}) if t.exception() else None)  # C4 fix
                 log("observer_healing", {"action": "snapshot_prune", "max_age_days": 3})
             except Exception as e:
                 log(

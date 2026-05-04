@@ -15,6 +15,13 @@
 **Why:** No HEAD yet in new repo — standard unstaging commands require at least one commit
 **Fix:** Use `git update-index --force-remove <file>` for each path
 
+## [2026-04-26] test_contradiction_detector writes real files to production contradictions dir
+**What:** `write_contradiction_record()` in tests writes to the real `dream/contradictions/`
+unless `CONTRADICTIONS_DIR` is patched. Produces garbage "Alice" test artifacts.
+**Fix:** Wrap every test that calls `write_contradiction_record()` with
+`with patch.object(mod, "CONTRADICTIONS_DIR", tmp_path):` — see the
+test cases that already use `list_contradictions()` correctly as an example.
+
 ## [2026-04-19] Apple pytest baseline = 144
 **What:** Any extraction step that drops below 144 must be rolled back
 **Why:** Hard gate from Run 2 spec — never regress
