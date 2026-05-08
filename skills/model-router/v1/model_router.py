@@ -65,6 +65,8 @@ class ModelRouter:
             return self._get_provider_with_credentials("mistral"), model[8:]
         if model.startswith("groq:"):
             return self._get_provider_with_credentials("groq"), model[5:]
+        if model.startswith("deepseek:"):
+            return self._get_provider_with_credentials("deepseek"), model[9:]
         if model.startswith("anthropic:"):
             return self._get_provider_with_credentials("anthropic"), model[10:]
         if "/" in model or model.endswith(":free") or model.endswith(":cloud"):
@@ -92,6 +94,51 @@ class ModelRouter:
         self._success_counts[model] = self._success_counts.get(model, 0) + 1
         if self._learner is not None:
             self._learner.update(model, success=True, latency=latency)
+
+    # ── Cost-Aware Routing (DeepSeek v4 is 27x cheaper than GPT-5.4) ─────
+
+    _MODEL_COSTS = {
+        # $ per 1M tokens (input approx)
+        "deepseek/deepseek-v4-pro": 0.14,
+        "deepseek/deepseek-v3.2": 0.27,
+        "deepseek-r1": 0.55,
+        "qwen/qwen3-coder": 0.15,
+        "openai/gpt-4.1-mini": 0.15,
+        "google/gemini-2.5-flash": 0.15,
+        "anthropic/claude-sonnet-4": 3.00,
+        "anthropic/claude-opus-4": 15.00,
+        "openai/gpt-5.4": 3.75,
+        "llama3.1:8b": 0.0,  # local
+        "qwen3.5:9b": 0.0,  # local
+    }
+
+    def get_model_cost(self, model: str) -> float:
+        """Get cost per 1M tokens for a model."""
+        for key, cost in self._MODEL_COSTS.items():
+            if key in model or model in key:
+                return cost
+        return 1.0  # unknown models default to $1/M
+
+    def select_cheapest(self, models: list, min_healthy: int = 1) -> str:
+        """Select cheapest healthy model from a list. DeepSeek bias."""
+        candidates = []
+        for m in models:
+            if self._is_healthy(m):
+                cost = self.get_model_cost(m)
+                candidates.append((cost, m))
+
+        if not candidates:
+            return models[0] if models else ""
+
+        # Sort by cost ascending (cheapest first)
+        candidates.sort(key=lambda x: x[0])
+
+        # If DeepSeek is available and healthy, prefer it (27x cheaper)
+        for cost, model in candidates:
+            if "deepseek" in model.lower():
+                return model
+
+        return candidates[0][1]
 
     async def complete(
         self, messages: list, chain: str = "fast", max_tokens: int = 2048, **kwargs
@@ -207,12 +254,21 @@ class ModelRouter:
     def _load_fallback_model(self) -> str:
         """Read fallback_model from protocols/model-intent.yml. Returns '' on any error."""
         try:
+            import os
             import pathlib
             import yaml  # type: ignore[import]
 
-            intent_path = (
-                pathlib.Path(__file__).parents[4] / "protocols" / "model-intent.yml"
+            # Anchor on PHOENIX_HOME (same convention as apple/registry/manager.py
+            # post-B-NEW-1); fall back to parents[4] for backwards-compat with
+            # checkouts that don't export PHOENIX_HOME.
+            phoenix_home = pathlib.Path(
+                os.environ.get("PHOENIX_HOME", "/mnt/c/Users/PhoenixGlobal")
             )
+            intent_path = phoenix_home / "protocols" / "model-intent.yml"
+            if not intent_path.exists():
+                intent_path = (
+                    pathlib.Path(__file__).parents[4] / "protocols" / "model-intent.yml"
+                )
             data = yaml.safe_load(intent_path.read_text())
             return data.get("fallback_model", "")
         except Exception:
